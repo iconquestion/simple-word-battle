@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<!--version 20220602-->
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>ClassPK - Let's Learn!</title>
+    <link href="../sources/bootstrap-5.1.3-dist/css/bootstrap.min.css" type="text/css" rel="stylesheet">
+    <link href="../sources/bootstrap-5.1.3-dist/css/bootstrap.min.css.map" type="text/css">
+    <style type="text/css">
+        h1 {
+            margin: 20px 0;
+        }
+
+        h4 {
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div>
+            <h1>ClassPK (PublicBeta)</h1>
+            <p>Pages full of idle words, penned with hot and bitter tears. All men call the author fool; none his secret
+                message hears.</p>
+        </div>
+        
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="soundEffectControl" checked>
+            <label class="form-check-label" for="soundEffectControl">Sound Effect</label>
+        </div>
+        </br>
+
+        <p>Correct Count: <span id="correctCount"></span></p>
+        
+        <div id="answers" class="d-grid gap-3">
+            <h4 id="test"></h4>
+            <button id="0" class="btn bg-light">Hello</button>
+            <button id="1" class="btn bg-light">World</button>
+            <button id="2" class="btn bg-light">NiceToMeetYou</button>
+            <button id="3" class="btn bg-light">Again</button>
+        </div>
+        <p id="info"></p>
+        <div class="row">
+            <div class="col-auto">
+                <button id="start" class="btn btn-primary">Start/Restart with</button>
+            </div>
+            <div class="col-3">
+                <div class="input-group">
+                    <span class="input-group-text" id="basic-addon2">Word</span>
+                    <input type="text" class="form-control" id="word">
+                </div>
+            </div>
+        </div>
+    </div>
+    <noscript>请启用JavaScript，否则页面将无法正常工作。</noscript>
+    <script src="../sources/jquery-3.6.0.js"></script>
+    <script src="../sources/bootstrap-5.1.3-dist/js/bootstrap.js"></script>
+    <script src="../sources/jquery.downCount.js"></script>
+    <script>
+        $(function () {
+            var answerNum, correctCount = 0, indexnum = 0;
+
+            var cSound = ['soundEffects/amazing.mp3', 'soundEffects/excellent.mp3', 'soundEffects/good.mp3', 'soundEffects/great.mp3', 'soundEffects/unbelievable.mp3']
+            var wSound = ['soundEffects/wrong1.wav','soundEffects/wrong2.aac']
+            var endSound = new Audio('soundEffects/end.mp3')
+
+            $('#answers button').attr('disabled', 'disabled')
+
+            $('button').on('click', function (e) {
+                e.preventDefault();
+                if ($(this).attr('id') != 'start') {
+                    //检查答案
+                    $('#answers button').attr('disabled', 'disabled')
+                    checkAnswer(e.target.id)
+                } else {
+                    //开始/重新开始
+                    if (!$("#word").val()) {
+                        $("#info").text('请输入一个单词.')
+                    } else {
+                        $('#correctCount').text('0')
+                        correctCount=0
+                        fetchNewWords($("#word").val())
+                    }
+
+                }
+            })
+
+            function checkAnswer(userAnswer) {
+                //console.log('user\'s answer: ' + userAnswer)
+                if (userAnswer == answerNum) {
+                    //console.log('OK')
+                    correctCount++;
+                    $('#correctCount').text(correctCount)
+                    $('#' + userAnswer).attr('class', 'btn btn-success')
+                    playSound(true)
+                } else {
+                    //console.log('No..')
+                    $('#' + userAnswer).attr('class', 'btn btn-danger')
+                    $('#' + answerNum).attr('class', 'btn btn-success')
+                    playSound(false)
+                }
+
+                setTimeout(async function () {
+                    fetchNewWords(0, ++indexnum)
+                    $('#answers button').attr('class', 'btn bg-light')
+                }, 1200)
+            }
+
+            async function fetchNewWords(word, index) {
+                await fetch('service.js?mode=manual' + (word ? '&searchfor=' + word : '') + (index ? '&index=' + index : '')).then(function (rawData) {
+                    return rawData.json()
+                }).then(function (data) {
+                    if (data.code != 200) {
+                        // console.log(data)
+                        $("#info").text('We are sorry, but something went wrong. Detail: ' + data.msg)
+                    } else {
+                        $("#info").text('')
+                        indexnum = data.data[0][0]
+                        //console.log(indexnum)
+                        console.log(data.data)
+                        //console.log('correct ans: ' + answerNum)
+                        updateHtml(data.data)
+                    }
+                })
+            }
+
+            function updateHtml(data) {
+                //console.log(data)
+
+                //随机排列str
+                var str = '0123'
+                var newStr1 = []
+                str.split('').forEach((item, index, array) => {
+                    var newIndex = Math.round(Math.random() * newStr1.length);
+                    newStr1.splice(newIndex, 0, item);
+                });
+
+                //console.log(newStr1)
+                answerNum = newStr1.indexOf('0')
+                //console.log(answerNum)
+
+                //更新题目
+                $('#test').hide().text(data[0][0] + '.  ' + data[0][1] + ' ' + data[0][2]).fadeIn('fast')
+                //设置每个按钮的文本
+                for (var i = 0; i < 4; i++) {
+                    $('#' + i).hide().text(data[newStr1[i]][3]).fadeIn('fast')
+                }
+
+
+                $('#answers button').removeAttr('disabled')
+            }
+
+            function playSound(boolean) {
+                if (!$('#soundEffectControl').is(':checked')) return
+                //播放‘正确’的音频
+                if (boolean) {
+                    new Audio(cSound[Math.floor(Math.random() * cSound.length)]).play()
+                } else {
+                    //播放‘错误’的音频
+                    new Audio(wSound[Math.floor(Math.random() * wSound.length)]).play()
+                }
+            }
+
+        })
+
+    </script>
+</body>
+
+</html>

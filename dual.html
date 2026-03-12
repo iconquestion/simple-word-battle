@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+<!--version 20220519-->
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Dual-player Beta</title>
+    <link href="../sources/bootstrap-5.1.3-dist/css/bootstrap.min.css" type="text/css" rel="stylesheet">
+    <link href="../sources/bootstrap-5.1.3-dist/css/bootstrap.min.css.map" type="text/css">
+
+    <style type="text/css">
+        h1 {
+            margin: 20px 0;
+        }
+
+        h4 {
+            text-align: center;
+        }
+
+        ul.countdown {
+            list-style: none;
+            margin: 75px 0;
+            padding: 0;
+            display: block;
+            text-align: center;
+            position: fixed;
+            top: 0px;
+            right: 9%
+        }
+
+        ul.countdown li {
+            display: inline-block;
+        }
+
+        ul.countdown li span {
+            font-size: 80px;
+            font-weight: 300;
+            line-height: 80px;
+        }
+
+        ul.countdown li.seperator {
+            font-size: 80px;
+            line-height: 70px;
+            vertical-align: top;
+        }
+
+        ul.countdown li p {
+            color: #a7abb1;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div>
+            <h1>ClassPK Beta</h1>
+            <h6>Warning! This is an early demo version. You may encounter some unexpected issues!</h6>
+        </div>
+        <details class="menu">
+            <summary>Details</summary>
+            <ul>
+                <li>The countdown cannot be stopped once started</li>
+                <li>Whether add the NEXT function is still under discussion</li>
+            </ul>
+        </details>
+        </br>
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="soundEffectControl" checked>
+            <label class="form-check-label" for="soundEffectControl">Sound Effect</label>
+        </div>
+
+        </br>
+        <h4 id="title">Undefined</h4>
+        </br>
+        <div id="playpanel" class="row">
+            <div id="player1" class="d-grid gap-3 col">
+                <h5>Correct Count: <span>Undefined</span></h5>
+                <button name="0" class="btn bg-light col-12">Hello</button>
+                <button name="1" class="btn bg-light col-12">World</button>
+                <button name="2" class="btn bg-light col-12">NiceTo</button>
+                <button name="3" class="btn bg-light col-12">SeeU</button>
+            </div>
+            <div id="player2" class="d-grid col gap-3">
+                <h5>Correct Count: <span>Undefined</span></h5>
+                <button name="0" class="btn bg-light col-12">Why</button>
+                <button name="1" class="btn bg-light col-12">DoNot</button>
+                <button name="2" class="btn bg-light col-12">Start</button>
+                <button name="3" class="btn bg-light col-12">NOW?</button>
+            </div>
+        </div>
+
+        <ul class="countdown">
+            <li> <span class="minutes">00</span>
+                <p class="minutes_ref">分钟</p>
+            </li>
+            <li class="seperator">:</li>
+            <li> <span class="seconds">00</span>
+                <p class="seconds_ref">秒</p>
+            </li>
+        </ul>
+        <p id="info"></p>
+        </br>
+        <div class="row">
+            <div class="col-auto">
+                <button id="start" class="btn btn-primary">Start/Restart</button>
+                <button id="startWithCountDown" class="btn btn-primary">Start/Restart With Countdown</button>
+            </div>
+            <div class="col-2">
+                <div class="input-group">
+                    <input type="number" class="form-control" id="countTime" value="2" min="0">
+                    <span class="input-group-text" id="basic-addon2">Min(s)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="../sources/jquery-3.6.0.js"></script>
+    <script src="../sources/bootstrap-5.1.3-dist/js/bootstrap.js"></script>
+    <script src="../sources/jquery.downCount.js"></script>
+    <script>
+        $(function () {
+            //predefined
+            var answerNum = {
+                'origin': 0, 'player1': 0, 'player2': 0
+            }, correctCount = { 'player1': 0, 'player2': 0 }, cAudioNum = 5, wAudioNum = 1
+
+            var cSound = ['soundEffects/amazing.mp3', 'soundEffects/excellent.mp3', 'soundEffects/good.mp3', 'soundEffects/great.mp3', 'soundEffects/unbelievable.mp3']
+            var wSound = ['soundEffects/wrong1.wav']
+            var endSound = new Audio('soundEffects/end.mp3')
+
+
+            //start
+            $('#playpanel button').attr('disabled', 'disabled')
+
+            $('#start').on('click', function (e) {
+                $('#playpanel span').text('0')
+                fetchNewWords()
+            })
+
+            $('#startWithCountDown').on('click', function (e) {
+                if (!$('#countTime').val()) alert('You have not entered the countdown time!')
+
+                // console.log($('#countTime').val())
+                var d = new Date()
+                //倒计时
+                d.setMinutes(d.getMinutes() + parseInt($('#countTime').val()))
+                console.log(d)
+                $('.countdown').downCount({
+                    date: d,
+                    offset: +8
+                }, function () {
+                    $('#playpanel button').attr('disabled', 'disabled')
+                    endSound.play()
+                    alert('Time is UP!')
+                })
+
+                $('#playpanel span').text('0')
+                fetchNewWords()
+            })
+
+            $('#playpanel button').on('click', function (e) {
+                checkAnswer(e.target.parentNode.id, $(this).attr('name'))
+            })
+
+            function fetchNewWords() {
+                fetch('service.js?mode=random').then(function (rawData) {
+                    return rawData.json()
+                }).then(function (data) {
+                    if (data.code != 200) {
+                        console.log(data)
+                        $("#info").text('We are sorry, but something went wrong! Please try again.')
+                    } else {
+                        $("#info").text('')
+                        $('#playpanel button').attr('class', 'btn bg-light')
+                        updateHtml(data.data)
+                    }
+                })
+            }
+
+            function checkAnswer(username, userAnswer) {
+                $('#playpanel button').attr('disabled', 'disabled')
+                if (userAnswer == answerNum[username]) {
+                    // console.log('Yes!')
+                    correctCount[username]++;
+                    $('#' + username + ' span').text(correctCount[username])
+                    $('#' + username + ' button[name=' + userAnswer + ']').attr('class', 'btn btn-success')
+                    playSound(true)
+                } else {
+                    // console.log('No..')
+                    $('#' + username + ' button[name=' + userAnswer + ']').attr('class', 'btn btn-danger')
+                    $('#player1 button[name=' + answerNum.player1 + ']').attr('class', 'btn btn-success')
+                    $('#player2 button[name=' + answerNum.player2 + ']').attr('class', 'btn btn-success')
+                    playSound(false)
+                }
+
+                setTimeout(function () {
+                    fetchNewWords()
+                }, 1000)
+
+            }
+
+            function updateHtml(data) {
+                //从fetch返回的data中随机选择一个作为正确答案
+                //0,1,2,3
+                answerNum.origin = Math.floor(Math.random() * 4)
+                //  console.log('selected item: ')
+                //   console.log(answerNum.origin)
+                //   console.log(data[answerNum.origin])
+
+                //更新题目和按钮文本
+                $('#title').hide().text(data[answerNum.origin][1] + ' ' + data[answerNum.origin][2]).fadeIn('fast')
+
+                //随机排列str
+                var str = '0123'
+                var newStr1 = [], newStr2 = [];
+                str.split('').forEach((item, index, array) => {
+                    var newIndex = Math.round(Math.random() * newStr1.length);
+                    newStr1.splice(newIndex, 0, item);
+
+                    var newIndex2 = Math.round(Math.random() * newStr2.length);
+                    newStr2.splice(newIndex2, 0, item);
+                });
+
+                //console.log(newStr1)
+                //console.log(newStr2)
+
+                //设置每个按钮的文本
+                for (var i = 0; i < 4; i++) {
+                    $('#player1 button[name=' + i + ']').hide().text(data[newStr1[i]][3]).fadeIn('fast')
+                    $('#player2 button[name=' + i + ']').hide().text(data[newStr2[i]][3]).fadeIn('fast')
+                }
+
+                $('#playpanel button').removeAttr('disabled')
+
+                //无法解释...
+                answerNum.player1 = newStr1.indexOf(answerNum.origin.toString())
+                answerNum.player2 = newStr2.indexOf(answerNum.origin.toString())
+
+                //console.log('1 correct ans: ' + answerNum.player1)
+                //console.log('2 correct ans: ' + answerNum.player2)
+            }
+
+            function playSound(boolean) {
+                if (!$('#soundEffectControl').is(':checked')) return
+                //播放‘正确’的音频
+                if (boolean) {
+                    new Audio(cSound[Math.floor(Math.random() * cSound.length)]).play()
+                } else {
+                    //播放‘错误’的音频
+                    new Audio(wSound[Math.floor(Math.random() * wSound.length)]).play()
+                }
+            }
+
+        })
+    </script>
+</body>
+
+</html>
