@@ -31,14 +31,14 @@
         </div>
         </br>
 
-        <p>Correct Count: <span id="correctCount"></span></p>
+        <p>Correct Count: <span id="correctCount"></span> Total: <span id="totalCount"></span> Accuracy: <span id="accuracy"></span>%</p>
         </br>
         <div id="answers" class="d-grid gap-3">
             <h4 id="test"></h4>
-            <button id="0" class="btn bg-light">0</button>
-            <button id="1" class="btn bg-light">1</button>
-            <button id="2" class="btn bg-light">2</button>
-            <button id="3" class="btn bg-light">3</button>
+            <button id="0" class="btn">0</button>
+            <button id="1" class="btn">1</button>
+            <button id="2" class="btn">2</button>
+            <button id="3" class="btn">3</button>
         </div>
         <p id="info"></p>
         <button id="start" class="btn btn-primary">Start/Restart</button>
@@ -48,89 +48,122 @@
     <script src="../sources/bootstrap-5.1.3-dist/js/bootstrap.js"></script>
     <script src="../sources/jquery.downCount.js"></script>
     <script>
+        /**
+         * 页面加载完成后初始化单词测试应用
+         * 设置事件监听器和初始状态
+         */
         $(function () {
-            var answerNum, correctCount = 0;
+            // 变量声明：正确答案索引、得分、总题数
+            let correctAnswerIndex, score = 0, total = 0;
+            
+            // 音频文件数组
+            const correctSounds = ['soundEffects/amazing.mp3', 'soundEffects/excellent.mp3', 'soundEffects/good.mp3', 'soundEffects/great.mp3', 'soundEffects/unbelievable.mp3'];
+            const wrongSounds = ['soundEffects/wrong1.wav'];
 
-            var cSound = ['soundEffects/amazing.mp3', 'soundEffects/excellent.mp3', 'soundEffects/good.mp3', 'soundEffects/great.mp3', 'soundEffects/unbelievable.mp3']
-            var wSound = ['soundEffects/wrong1.wav']
-            var endSound = new Audio('soundEffects/end.mp3')
+            // 初始禁用答案按钮
+            $('#answers button').prop('disabled', true);
 
-            $('#answers button').attr('disabled', 'disabled')
-
+            // 按钮点击事件处理
             $('button').on('click', function (e) {
                 e.preventDefault();
-                if ($(this).attr('id') != 'start') {
-                    //检查答案
-                    $('#answers button').attr('disabled', 'disabled')
-                    checkAnswer(e.target.id)
+                const btnId = $(this).attr('id');
+                if (btnId !== 'start') {
+                    // 禁用按钮防止重复点击
+                    $('#answers button').prop('disabled', true);
+                    checkAnswer(btnId);
                 } else {
-                    //开始/重新开始
-                    $('#correctCount').text('0')
-                    fetchNewWords()
+                    // 重置统计数据
+                    $('#correctCount').text('0');
+                    $('#totalCount').text('0');
+                    $('#accuracy').text('0');
+                    score = 0;
+                    total = 0;
+                    fetchNewWords();
                 }
-            })
+            });
 
+            /**
+             * 检查用户答案并更新UI
+             * @param {string} userAnswer - 用户选择的答案按钮ID
+             */
             function checkAnswer(userAnswer) {
-                console.log('user\'s answer: ' + userAnswer)
-                if (userAnswer == answerNum) {
-                    console.log('OK')
-                    correctCount++;
-                    $('#correctCount').text(correctCount)
-                    $('#' + userAnswer).attr('class', 'btn btn-success')
-                    playSound(true)
-                } else {
-                    console.log('No..')
-                    $('#' + userAnswer).attr('class', 'btn btn-danger')
-                    $('#' + answerNum).attr('class', 'btn btn-success')
-                    playSound(false)
-                }
+                // 增加总题数
+                total++;
+                // 判断答案是否正确
+                const isCorrect = userAnswer == correctAnswerIndex;
+                // 更新得分
+                score += isCorrect ? 1 : 0;
+                // 计算正确率
+                const accuracy = ((score / total) * 100).toFixed(1);
 
-                setTimeout(function () {
-                    $('#answers button').attr('class', 'btn bg-light')
-                    fetchNewWords()
-                }, 1000)
+                // 更新显示
+                $('#correctCount').text(score);
+                $('#totalCount').text(total);
+                $('#accuracy').text(accuracy);
+
+                // 添加相应颜色
+                $(`#${userAnswer}`).addClass(isCorrect ? 'btn-success' : 'btn-danger');
+                if (!isCorrect) $(`#${correctAnswerIndex}`).addClass('btn-success');
+
+                // 播放音效
+                playSound(isCorrect);
+
+                // 延迟后重置并获取新题目
+                setTimeout(() => {
+                    // 移除颜色
+                    $('#answers button').removeClass('btn-success btn-danger');
+                    fetchNewWords();
+                }, 1000);
             }
 
+            /**
+             * 从API获取随机单词数据
+             */
             function fetchNewWords() {
-                fetch('/api?mode=random').then(function (rawData) {
-                    return rawData.json()
-                }).then(function (data) {
-                    if (data.code != 200) {
-                        // console.log(data)
-                        $("#info").text('We are sorry, but something went wrong. Please try again!')
-                    } else {
-                        $("#info").text('')
-                        //console.log(data)
-                        answerNum = Math.floor(Math.random() * 3)
-                        //console.log('correct ans: ' + answerNum)
-                        updateHtml(data.data)
-                    }
-                })
+                fetch('/api?mode=random')
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.code !== 200) {
+                            // API错误处理
+                            $("#info").text('We are sorry, but something went wrong. Please try again!');
+                        } else {
+                            // 清除错误信息
+                            $("#info").text('');
+                            // 随机选择正确答案索引
+                            correctAnswerIndex = Math.floor(Math.random() * 4);
+                            updateHtml(data.data);
+                        }
+                    });
             }
 
+            /**
+             * 更新页面HTML显示新题目
+             * @param {Array} data - 从API获取的单词数据数组
+             */
             function updateHtml(data) {
-                //更新题目
-                $('#test').hide().text(data[answerNum][1] + ' ' + data[answerNum][2]).fadeIn('fast')
-                //设置每个按钮的文本
-                for (var i = 0; i < 4; i++) {
-                    $('#' + i).hide().text(data[i][3]).fadeIn('fast')
+                // 显示题目：单词 + 音标
+                $('#test').hide().text(`${data[correctAnswerIndex][1]} ${data[correctAnswerIndex][2]}`).fadeIn('fast');
+                // 更新答案按钮文本
+                for (let i = 0; i < 4; i++) {
+                    $(`#${i}`).hide().text(data[i][3]).fadeIn('fast');
                 }
-                $('#answers button').removeAttr('disabled')
+                // 启用答案按钮
+                $('#answers button').prop('disabled', false);
             }
 
-            function playSound(boolean) {
-                if (!$('#soundEffectControl').is(':checked')) return
-                //播放‘正确’的音频
-                if (boolean) {
-                    new Audio(cSound[Math.floor(Math.random() * cSound.length)]).play()
-                } else {
-                    //播放‘错误’的音频
-                    new Audio(wSound[Math.floor(Math.random() * wSound.length)]).play()
-                }
+            /**
+             * 根据答案正确性播放音效
+             * @param {boolean} isCorrect - 答案是否正确
+             */
+            function playSound(isCorrect) {
+                // 检查音效开关
+                if (!$('#soundEffectControl').is(':checked')) return;
+                // 选择音效数组
+                const sounds = isCorrect ? correctSounds : wrongSounds;
+                // 随机播放一个音效
+                new Audio(sounds[Math.floor(Math.random() * sounds.length)]).play();
             }
-
-        })
-
+        });
     </script>
 </body>
 

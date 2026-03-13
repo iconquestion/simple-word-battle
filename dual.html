@@ -75,18 +75,18 @@
         </br>
         <div id="playpanel" class="row">
             <div id="player1" class="d-grid gap-3 col">
-                <h5>Correct Count: <span>Undefined</span></h5>
-                <button name="0" class="btn bg-light col-12">Hello</button>
-                <button name="1" class="btn bg-light col-12">World</button>
-                <button name="2" class="btn bg-light col-12">NiceTo</button>
-                <button name="3" class="btn bg-light col-12">SeeU</button>
+                <p>Correct Count: <span id="player1-correct"></span> Total: <span id="player1-total"></span> Accuracy: <span id="player1-accuracy"></span>%</p>
+                <button id="player1-0" class="btn col-12">Hello</button>
+                <button id="player1-1" class="btn col-12">World</button>
+                <button id="player1-2" class="btn col-12">NiceTo</button>
+                <button id="player1-3" class="btn col-12">SeeU</button>
             </div>
             <div id="player2" class="d-grid col gap-3">
-                <h5>Correct Count: <span>Undefined</span></h5>
-                <button name="0" class="btn bg-light col-12">Why</button>
-                <button name="1" class="btn bg-light col-12">DoNot</button>
-                <button name="2" class="btn bg-light col-12">Start</button>
-                <button name="3" class="btn bg-light col-12">NOW?</button>
+                <p>Correct Count: <span id="player2-correct"></span> Total: <span id="player2-total"></span> Accuracy: <span id="player2-accuracy"></span>%</p>
+                <button id="player2-0" class="btn col-12">Why</button>
+                <button id="player2-1" class="btn col-12">DoNot</button>
+                <button id="player2-2" class="btn col-12">Start</button>
+                <button id="player2-3" class="btn col-12">NOW?</button>
             </div>
         </div>
 
@@ -118,140 +118,181 @@
     <script src="../sources/bootstrap-5.1.3-dist/js/bootstrap.js"></script>
     <script src="../sources/jquery.downCount.js"></script>
     <script>
+        /**
+         * 页面加载完成后初始化双人PK单词测试应用
+         * 设置事件监听器和初始状态
+         */
         $(function () {
-            //predefined
-            var answerNum = {
-                'origin': 0, 'player1': 0, 'player2': 0
-            }, correctCount = { 'player1': 0, 'player2': 0 }, cAudioNum = 5, wAudioNum = 1
+            // 常量定义
+            const PLAYERS = ['player1', 'player2'];
+            const OPTIONS_COUNT = 4;
 
-            var cSound = ['soundEffects/amazing.mp3', 'soundEffects/excellent.mp3', 'soundEffects/good.mp3', 'soundEffects/great.mp3', 'soundEffects/unbelievable.mp3']
-            var wSound = ['soundEffects/wrong1.wav']
-            var endSound = new Audio('soundEffects/end.mp3')
+            // 变量声明：正确答案索引、得分、总题数
+            let correctAnswerIndices = { player1: 0, player2: 0 }, scores = { player1: 0, player2: 0 }, totals = { player1: 0, player2: 0 };
 
+            // 音频文件数组
+            const correctSounds = ['soundEffects/amazing.mp3', 'soundEffects/excellent.mp3', 'soundEffects/good.mp3', 'soundEffects/great.mp3', 'soundEffects/unbelievable.mp3'];
+            const wrongSounds = ['soundEffects/wrong1.wav'];
+            const endSound = new Audio('soundEffects/end.mp3');
 
-            //start
-            $('#playpanel button').attr('disabled', 'disabled')
+            // 初始禁用答案按钮
+            $('#playpanel button').prop('disabled', true);
 
+            // 开始按钮事件
             $('#start').on('click', function (e) {
-                $('#playpanel span').text('0')
-                fetchNewWords()
-            })
+                resetScores();
+                fetchNewWords();
+            });
 
+            // 带倒计时的开始按钮事件
             $('#startWithCountDown').on('click', function (e) {
-                if (!$('#countTime').val()) alert('You have not entered the countdown time!')
+                if (!$('#countTime').val()) {
+                    alert('You have not entered the countdown time!');
+                    return;
+                }
 
-                // console.log($('#countTime').val())
-                var d = new Date()
-                //倒计时
-                d.setMinutes(d.getMinutes() + parseInt($('#countTime').val()))
-                console.log(d)
+                const d = new Date();
+                d.setMinutes(d.getMinutes() + parseInt($('#countTime').val()));
                 $('.countdown').downCount({
                     date: d,
                     offset: +8
                 }, function () {
-                    $('#playpanel button').attr('disabled', 'disabled')
-                    endSound.play()
-                    alert('Time is UP!')
-                })
-
-                $('#playpanel span').text('0')
-                fetchNewWords()
-            })
-
-            $('#playpanel button').on('click', function (e) {
-                checkAnswer(e.target.parentNode.id, $(this).attr('name'))
-            })
-
-            function fetchNewWords() {
-                fetch('service.js?mode=random').then(function (rawData) {
-                    return rawData.json()
-                }).then(function (data) {
-                    if (data.code != 200) {
-                        console.log(data)
-                        $("#info").text('We are sorry, but something went wrong! Please try again.')
-                    } else {
-                        $("#info").text('')
-                        $('#playpanel button').attr('class', 'btn bg-light')
-                        updateHtml(data.data)
-                    }
-                })
-            }
-
-            function checkAnswer(username, userAnswer) {
-                $('#playpanel button').attr('disabled', 'disabled')
-                if (userAnswer == answerNum[username]) {
-                    // console.log('Yes!')
-                    correctCount[username]++;
-                    $('#' + username + ' span').text(correctCount[username])
-                    $('#' + username + ' button[name=' + userAnswer + ']').attr('class', 'btn btn-success')
-                    playSound(true)
-                } else {
-                    // console.log('No..')
-                    $('#' + username + ' button[name=' + userAnswer + ']').attr('class', 'btn btn-danger')
-                    $('#player1 button[name=' + answerNum.player1 + ']').attr('class', 'btn btn-success')
-                    $('#player2 button[name=' + answerNum.player2 + ']').attr('class', 'btn btn-success')
-                    playSound(false)
-                }
-
-                setTimeout(function () {
-                    fetchNewWords()
-                }, 1000)
-
-            }
-
-            function updateHtml(data) {
-                //从fetch返回的data中随机选择一个作为正确答案
-                //0,1,2,3
-                answerNum.origin = Math.floor(Math.random() * 4)
-                //  console.log('selected item: ')
-                //   console.log(answerNum.origin)
-                //   console.log(data[answerNum.origin])
-
-                //更新题目和按钮文本
-                $('#title').hide().text(data[answerNum.origin][1] + ' ' + data[answerNum.origin][2]).fadeIn('fast')
-
-                //随机排列str
-                var str = '0123'
-                var newStr1 = [], newStr2 = [];
-                str.split('').forEach((item, index, array) => {
-                    var newIndex = Math.round(Math.random() * newStr1.length);
-                    newStr1.splice(newIndex, 0, item);
-
-                    var newIndex2 = Math.round(Math.random() * newStr2.length);
-                    newStr2.splice(newIndex2, 0, item);
+                    $('#playpanel button').prop('disabled', true);
+                    endSound.play();
+                    alert('Time is UP!');
                 });
 
-                //console.log(newStr1)
-                //console.log(newStr2)
+                resetScores();
+                fetchNewWords();
+            });
 
-                //设置每个按钮的文本
-                for (var i = 0; i < 4; i++) {
-                    $('#player1 button[name=' + i + ']').hide().text(data[newStr1[i]][3]).fadeIn('fast')
-                    $('#player2 button[name=' + i + ']').hide().text(data[newStr2[i]][3]).fadeIn('fast')
-                }
+            // 答案按钮点击事件
+            $('#playpanel button').on('click', function (e) {
+                const [player, optionStr] = $(this).attr('id').split('-');
+                const optionIndex = parseInt(optionStr);
+                checkAnswer(player, optionIndex);
+            });
 
-                $('#playpanel button').removeAttr('disabled')
-
-                //无法解释...
-                answerNum.player1 = newStr1.indexOf(answerNum.origin.toString())
-                answerNum.player2 = newStr2.indexOf(answerNum.origin.toString())
-
-                //console.log('1 correct ans: ' + answerNum.player1)
-                //console.log('2 correct ans: ' + answerNum.player2)
+            /**
+             * 重置玩家得分和统计
+             */
+            function resetScores() {
+                scores = { player1: 0, player2: 0 };
+                totals = { player1: 0, player2: 0 };
+                updateStats();
             }
 
-            function playSound(boolean) {
-                if (!$('#soundEffectControl').is(':checked')) return
-                //播放‘正确’的音频
-                if (boolean) {
-                    new Audio(cSound[Math.floor(Math.random() * cSound.length)]).play()
+            /**
+             * 更新玩家统计显示
+             */
+            function updateStats() {
+                PLAYERS.forEach(player => {
+                    const correct = scores[player];
+                    const total = totals[player];
+                    const accuracy = total > 0 ? ((correct / total) * 100).toFixed(1) : '0.0';
+                    $(`#${player}-correct`).text(correct);
+                    $(`#${player}-total`).text(total);
+                    $(`#${player}-accuracy`).text(accuracy);
+                });
+            }
+
+            /**
+             * 从API获取随机单词数据
+             */
+            function fetchNewWords() {
+                fetch('/api?mode=random')
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.code !== 200) {
+                            $("#info").text('We are sorry, but something went wrong! Please try again.');
+                        } else {
+                            $("#info").text('');
+                            $('#playpanel button').removeClass('btn-success btn-danger');
+                            updateHtml(data.data);
+                        }
+                    });
+            }
+
+            /**
+             * 检查用户答案并更新UI
+             * @param {string} player - 玩家ID ('player1' 或 'player2')
+             * @param {number} optionIndex - 用户选择的选项索引
+             */
+            function checkAnswer(player, optionIndex) {
+                $('#playpanel button').prop('disabled', true);
+                const isCorrect = optionIndex === correctAnswerIndices[player];
+
+                // 增加总题数
+                totals[player]++;
+
+                if (isCorrect) {
+                    scores[player]++;
+                    $(`#${player}-${optionIndex}`).addClass('btn-success');
+                    playSound(true);
                 } else {
-                    //播放‘错误’的音频
-                    new Audio(wSound[Math.floor(Math.random() * wSound.length)]).play()
+                    $(`#${player}-${optionIndex}`).addClass('btn-danger');
+                    // 高亮当前玩家的正确答案
+                    $(`#${player}-${correctAnswerIndices[player]}`).addClass('btn-success');
+                    playSound(false);
                 }
+
+                // 更新统计显示
+                updateStats();
+
+                setTimeout(() => {
+                    $('#playpanel button').removeClass('btn-success btn-danger');
+                    fetchNewWords();
+                }, 1000);
             }
 
-        })
+            /**
+             * 更新页面HTML显示新题目
+             * @param {Array} data - 从API获取的单词数据数组
+             */
+            function updateHtml(data) {
+                // 随机选择正确答案
+                const correctIndex = Math.floor(Math.random() * OPTIONS_COUNT);
+                // 显示题目：单词 + 音标
+                $('#title').hide().text(`${data[correctIndex][1]} ${data[correctIndex][2]}`).fadeIn('fast');
+
+                // 为每个玩家随机排列答案
+                PLAYERS.forEach(player => {
+                    const shuffled = shuffleArray([...Array(OPTIONS_COUNT).keys()]);
+                    shuffled.forEach((shuffledIndex, buttonIndex) => {
+                        $(`#${player}-${buttonIndex}`).hide().text(data[shuffled[buttonIndex]][3]).fadeIn('fast');
+                    });
+                    // 计算正确答案在玩家按钮中的位置
+                    correctAnswerIndices[player] = shuffled.indexOf(correctIndex);
+                });
+
+                // 启用按钮
+                $('#playpanel button').prop('disabled', false);
+            }
+
+            /**
+             * 根据答案正确性播放音效
+             * @param {boolean} isCorrect - 答案是否正确
+             */
+            function playSound(isCorrect) {
+                if (!$('#soundEffectControl').is(':checked')) return;
+                const sounds = isCorrect ? correctSounds : wrongSounds;
+                new Audio(sounds[Math.floor(Math.random() * sounds.length)]).play();
+            }
+
+            /**
+             * 随机打乱数组
+             * @param {Array} array - 要打乱的数组
+             * @returns {Array} 打乱后的数组
+             */
+            function shuffleArray(array) {
+                const shuffled = [...array];
+                for (let i = shuffled.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                }
+                return shuffled;
+            }
+        });
     </script>
 </body>
 
